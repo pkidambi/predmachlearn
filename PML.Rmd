@@ -1,0 +1,78 @@
+---
+title: "Practical Machine Learning"
+author: "PKidambi"
+---
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks.In this project, we predict the manner (*CLASSE* variable in the dataset) in which the personnel did the exercise. The training and testing dataset was provided in the assignment. 
+
+```{r echo= FALSE}
+# Set the working directory and load the libraries required for this project
+setwd("C:\\Users\\CECS-INT\\Desktop\\Coursera\\16.PracticalMachineLearning\\Project\\")
+library(xlsx)
+library(caret)
+library(kernlab)
+library(dplyr)
+library(data.table)
+library(rattle)
+options(warn=-1)
+```
+
+
+```{r}
+# To reproduce the analysis, we set a seed
+set.seed(1016)
+```
+
+
+```{r, echo=FALSE}
+# Read the training and testing dataset
+training<- read.csv("pml-training.csv")
+testing <- read.csv("pml-testing.csv")
+
+```
+
+Since the data had 160 columns, I came up with a strategy to reduce the number of columns into something managable. My strategy was to first pick columns which had "belt", "arm" and "dumbbell" in the column names. This reduced the number of columns to 152 which was still large.  
+
+```{r, echo=FALSE}
+t1 <- training[,which(names(testing) %like% c("belt") | names(testing) %like% c("arm")| names(testing) %like% c("dumbbell"))]
+
+```
+
+Using visual inspection, I realized that there were columns with a lot of NA's. The common aspects of these columns was the column names had "max", "min", "amplitude", "avg", "stdev", "skewness", "kurtosis" and "var" terms in them. To take advantage of this fact, I removed any of the columns which had those terms which reduced the total number of columns to 52 (managable). 
+
+```{r, echo=FALSE}
+t2 <- t1[,- which(names(t1) %like% c("max")| names(t1) %like% c("min")| names(t1) %like% c("amplitude")| names(t1) %like% c("var")| names(t1) %like% c("avg")| names(t1) %like% c("stdev")| names(t1) %like% c("skewness")| names(t1) %like% c("kurtosis")| names(t1) %like% c("stddev"))] 
+```
+
+I added the CLASSE column to t2 and created a new variable t3. 
+
+```{r, echo=FALSE}
+t3 <- data.frame(t2,training$classe)
+```
+
+For validation, I split the training set into train_d (training for my model) and valid_d(validation for my model) datasets. 75% of the data was used for training while 25% of the data was used for validation. 
+```{r, echo=FALSE}
+intrain <- createDataPartition(t3$training.classe,p=0.75,list = FALSE)
+train_d <- t3[intrain,]
+train_d <- as.data.frame(train_d)
+valid_d <- t3[-intrain,]
+```
+
+I used the Random Forest algorithm for training the model. 
+```{r, echo=FALSE}
+modelFit <- train(train_d$training.classe ~., data = as.data.frame(train_d), method = "rf" )
+
+```
+The final model (with accuracy calculations) is showcased below
+```{r, echo=FALSE}
+modelFit$finalModel
+```
+
+I have used the predict function to predict the Classe for the validation dataset. The confusion matrix is showcased below
+
+```{r, echo=FALSE}
+val <- predict(modelFit,valid_d)
+confusionMatrix(val, valid_d$training.classe)
+```
+
+The sensitivity and specificity results clearly showcase that the selected variables coupled with Random Forest algorithm worked well for this dataset. 
